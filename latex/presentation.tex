@@ -1,0 +1,226 @@
+\documentclass{beamer}
+
+\usetheme{default}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage[francais]{babel} 
+\usepackage{caption}
+
+\setbeamertemplate{footline}{%
+  \raisebox{5pt}{\makebox[\paperwidth]{\hfill\makebox[10pt]{\scriptsize\insertframenumber/\inserttotalframenumber}\hspace*{10pt}}}%
+}
+\setbeamertemplate{navigation symbols}{}
+
+\title{PROJET TI: Quantification Vectorielle des Images}
+\author{Bellili Fouad, Sourdrille Nathan \\ ITI4}
+\date{\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\section{Introduction et Rappels}
+\begin{frame}{Plan de la Présentation}
+\begin{itemize}
+    \item Rappels sur la \textbf{Quantification Scalaire (QS)}
+    \item Présentation de la \textbf{Quantification Vectorielle (QV)}
+    \item Algorithmes de Construction du Codebook : \textbf{K-means et LBG}
+    \item \textbf{Méthodes Avancées} (TSVQ, PQ)
+    \item Exemples de cas d'utilisation et \textbf{Applications}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Rappels sur la Quantification Scalaire (QS)}
+\begin{itemize}
+    \item La QS est un processus de traitement \textbf{pixel par pixel}.
+    \item Chaque pixel $\boldsymbol{x}$ est remplacé par un niveau d'intensité $\boldsymbol{\hat{x}}$ parmi $\boldsymbol{L}$ niveaux possibles.
+    \item Formule de quantification uniforme (pour une image 8 bits) :
+    \begin{equation*}
+        \hat{x} = \operatorname{round}\left( \frac{x}{255}(L-1) \right)\frac{255}{L-1}
+    \end{equation*}
+    
+    \item \textbf{Limite de la QS} : Ce procédé ne tient \textbf{pas compte des structures locales} de l'image (corrélations spatiales).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{QS : Illustration de l'effet des faibles niveaux}
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{images/image1.png} 
+    \captionof{figure}{QS pour différentes valeurs de niveau L}
+\end{center}
+\end{frame}
+
+\begin{frame}{Indices de Comparaison (Qualité)}
+\begin{itemize}
+    \item \textbf{MSE} (\emph{Mean Squared Error}) : Erreur quadratique moyenne entre l'image originale $x_i$ et l'image reconstruite $\hat{x}_i$.
+    \begin{equation*}
+        \mathrm{MSE}=\frac{1}{N}\sum_{i=1}^{N}(x_{i}-\hat{x}_{i})^{2}
+    \end{equation*}
+    \item \textbf{PSNR} (\emph{Peak Signal-to-Noise Ratio}) : Mesure de qualité (plus le PSNR est élevé, meilleure est la qualité).
+    \begin{equation*}
+        \mathrm{PSNR}=10\log_{10}\left(\frac{255^{2}}{\mathrm{MSE}}\right)
+    \end{equation*}
+\end{itemize}
+\end{frame}
+
+\section{Présentation de la Quantification Vectorielle (QV)}
+\begin{frame}{Principe de la Quantification Vectorielle}
+\begin{itemize}
+    \item Contrairement à la QS, la QV opère sur des \textbf{blocs de pixels} (vecteurs de $\mathbb{R}^n$).
+    \item Cette approche permet une \textbf{meilleure exploitation} des corrélations spatiales.
+    \item L'objectif est de réduire la quantité de données en conservant une bonne qualité (compression).
+    \item \textbf{Les 4 grandes étapes de la QV :}
+    \begin{enumerate}
+        \item Découpage en vecteur blocs.
+        \item Construction d'un Codebook.
+        \item Codage (recherche du vecteur le plus proche).
+        \item Décodage (reconstruction).
+    \end{enumerate}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{QV : Illustration de la compression par blocs}
+\begin{columns}
+    \begin{column}{0.48\textwidth}
+        \centering
+        \textbf{Image originale}
+        \includegraphics[width=\textwidth]{images/image2.png} 
+    \end{column}
+    \begin{column}{0.48\textwidth}
+        \centering
+        \textbf{Image quantifiée (QV)}
+        \includegraphics[width=\textwidth]{images/image3.png} 
+    \end{column}
+\end{columns}
+\vspace{0.5em}
+\centering
+\end{frame}
+
+\begin{frame}{Étapes détaillées de la Quantification Vectorielle}
+\begin{enumerate}
+    \item \textbf{Découpage en vecteurs} : L'image est divisée en blocs $n \times n$ (vecteurs $v \in \mathbb{R}^n$).
+    \pause
+    \item \textbf{Construction du Codebook ($\mathcal{C}$)} : Création d'un dictionnaire de $K$ vecteurs représentatifs (codewords).
+    \begin{equation*}
+        \mathcal{C} = \{c_1, c_2, \dots, c_K\}, \quad c_k \in \mathbb{R}^n
+    \end{equation*}
+    \pause
+    \item \textbf{Codage} : Chaque bloc $v$ est remplacé par l'indice $\boldsymbol{k^*}$ du codeword le plus proche (minimisation de la distance).
+    \begin{equation*}
+        k^* = \arg\min_{k \in \{1, \dots, K\}} \|v - c_k\|^2
+    \end{equation*}
+    \pause
+    \item \textbf{Décodage} : L'image est reconstruite en remplaçant chaque indice $k^*$ par son codeword associé $\boldsymbol{\hat{v}}$.
+    \begin{equation*}
+        \hat{v} = c_{k^*}
+    \end{equation*}
+\end{enumerate}
+\end{frame}
+
+\section{Algorithmes de Construction du Codebook}
+
+\begin{frame}{Algorithme K-means}
+\begin{itemize}
+    \item Algorithme de \textbf{clustering} fondamental.
+    \item Il partitionne les vecteurs de l'image en $\boldsymbol{K}$ ensembles, chaque ensemble étant représenté par son centre (le \textbf{codeword}).
+    \item L'initialisation est \textbf{aléatoire}.
+    \item \textbf{Compromis} : Peut converger vers des minima locaux.
+    \item paramètre K: nombre de codewords
+    \item paramètre L: taille des blocs vecteurs
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Choix des paramètres K et L}
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{images/image6.png} 
+\end{center}
+\end{frame}
+
+\begin{frame}{Algorithme LBG (\emph{Linde–Buzo–Gray})}
+\begin{itemize}
+    \item Extension du K-means utilisant une stratégie d'apprentissage \textbf{progressive} et \textbf{plus stable}.
+    \item Utilise un mécanisme de \textbf{Split} :
+    \begin{enumerate}
+        \item Commence par un unique codeword (la moyenne globale).
+        \item Double la taille du codebook à chaque itération en dupliquant les codewords ($\pm \epsilon$).
+        \item Applique K-means localement sur les nouveaux centres.
+    \end{enumerate}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{QS : Illustration de l'effet des faibles niveaux}
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{images/image5.png} 
+\end{center}
+\end{frame}
+
+\begin{frame}{K-means vs LBG : Analyse comparative}
+\begin{itemize}
+    \item \textbf{PSNR} : K-means obtient souvent un PSNR \textbf{légèrement meilleur} car il est plus flexible dans le regroupement des blocs.
+    \item \textbf{Fiabilité} : LBG construit un codebook \textbf{plus solide} et est moins dépendant du hasard de l'initialisation que K-means.
+    \item \textbf{Conclusion opérationnelle} :
+    \begin{itemize}
+        \item Pour la rapidité, on utilise \textbf{K-means}.
+        \item Pour la fiabilité, on utilise \textbf{LBG}.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Méthodes Avancées}
+
+\begin{frame}{Quantification Vectorielle par Arbre (TSVQ)}
+\begin{itemize}
+    \item Utilise une \textbf{structure arborescente hiérarchique} (\emph{Complete Binary Tree}).
+    \item \textbf{Avantage majeur} : Permet un \textbf{encodage très rapide} (recherche du codeword en $\mathcal{O}(\log K)$).
+    \item \textbf{Compromis} : Le codebook est généralement \textbf{moins optimal} que celui généré par K-means ou LBG.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Quantification par Produit (PQ)}
+\begin{itemize}
+    \item Méthode utilisée lorsque les vecteurs sont de \textbf{très grande dimension}.
+    \item Le vecteur est découpé en \textbf{sous-vecteurs}, chacun quantifié indépendamment.
+    \item Permet une \textbf{compression extrême} de la mémoire et des temps d'accès.
+    \item \textbf{Application moderne} : Utilisation massive dans la \textbf{recherche de similarité} à grande échelle (ex: FAISS).
+\end{itemize}
+\end{frame}
+
+\section{Applications}
+
+\begin{frame}{Domaines d'Utilisation de la QV}
+\begin{itemize}
+    \item \textbf{Compression d'images} : Historiquement, avant le JPEG.
+    \item \textbf{Codage audio bas débit} : Pour compresser les paramètres acoustiques (ex: systèmes GSM).
+    \item \textbf{Compression de textures 3D} : Optimisation de l'espace mémoire dans les moteurs graphiques (ex: Nintendo 64).
+    \item \textbf{Compression des modèles de Deep Learning} : Réduction de la taille mémoire des réseaux (un enjeu majeur aujourd'hui).
+\end{itemize}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Conclusion}
+\begin{itemize}
+    \item Le projet a permis de lier les notions théoriques (QS, QV, clustering) à une implémentation pratique (MSE/PSNR, K-means/LBG).
+    \item La QV est une technique fondamentale offrant une \textbf{compression efficace} en exploitant les corrélations spatiales.
+    \item L'efficacité repose sur le \textbf{compromis} entre qualité, complexité de calcul et taille du dictionnaire.
+    \item La QV reste très pertinente pour l'optimisation des ressources dans les \textbf{applications modernes} (Deep Learning, recherche de similarité).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bibliographie}
+\begin{itemize}
+    \item https://ichi.pro/quantification-vectorielle-a-l-aide-de-l-algorithme-k-means-109414082708262
+theses.fr/1992METZ008S
+    \item https://en.wikipedia.org/wiki/Vectorquantization
+    \item https://www.geeksforgeeks.org/dsa/linde-buzo-gray-lbg-algorithm/
+    \item https://en.wikipedia.org/wiki/K-meansclustering
+
+\end{itemize}
+\end{frame}
+
+\end{document}
+
+
